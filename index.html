@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secure Seat Booking System</title>
+    <style>
+        .seat {
+            width: 30px;
+            height: 30px;
+            margin: 5px;
+            display: inline-block;
+            background-color: #ccc;
+            text-align: center;
+            line-height: 30px;
+            cursor: pointer;
+        }
+        .selected {
+            background-color: #4CAF50;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>Secure Seat Booking System</h1>
+    
+    <div id="authSection">
+        <h2>Authentication</h2>
+        <input type="text" id="username" placeholder="Username">
+        <input type="password" id="password" placeholder="Password">
+        <button onclick="signIn()">Sign In</button>
+        <button onclick="register()">Register</button>
+    </div>
+
+    <div id="bookingSection" class="hidden">
+        <h2>Seat Booking</h2>
+        <div id="seatMap"></div>
+        <p>Selected seats: <span id="selectedSeats"></span></p>
+        <label for="numPeople">Number of people:</label>
+        <input type="number" id="numPeople" min="1" max="40" value="1">
+        <button onclick="bookSeats()">Book Seats</button>
+    </div>
+
+    <script src="booking.js"></script>
+</body>
+</html>
