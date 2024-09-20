@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>Secure Seat Booking System</title>
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.26.2/full/pyodide.js"></script>
     <style>
         .seat {
             width: 30px;
@@ -22,10 +24,11 @@
             display: none;
         }
     </style>
+   
 </head>
 <body>
     <h1>Secure Seat Booking System</h1>
-    
+
     <div id="authSection">
         <h2>Authentication</h2>
         <input type="text" id="username" placeholder="Username">
@@ -43,6 +46,6 @@
         <button onclick="bookSeats()">Book Seats</button>
     </div>
 
-    <script src="booking.js"></script>
+    <script src="JS/index.js"></script>
 </body>
 </html>

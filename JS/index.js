@@ -1,65 +1,53 @@
-const SERVER_URL = 'http://localhost:8000';  // Assuming the Python server runs on port 8000
-const rows = ['A', 'B', 'C', 'D'];
-const seatsPerRow = 10;
 let selectedSeats = [];
 let currentUser = null;
+let pyodide;
+let jsonLink = ""; // Variable to hold the latest JSON link
+let registeredUsers = []; // Array to hold registered users
 
-function signIn() {
-    const username = document.getElementById('username').value;
-    const password = document.getElementById('password').value;
-    
-    fetch(`${SERVER_URL}/signin`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ username, password }),
-    })
-    .then(response => response.json())
-    .then(result => {
-        if (result.status === 'success') {
-            currentUser = username;
-            document.getElementById('authSection').classList.add('hidden');
-            document.getElementById('bookingSection').classList.remove('hidden');
-            loadUserBooking();
-        } else {
-            alert('Sign in failed: ' + result.message);
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('An error occurred while signing in. Please try again.');
-    });
-}
+async function loadPyodideAndPackages() {
+    pyodide = await loadPyodide();
+    await pyodide.loadPackage('micropip');
+    await pyodide.runPythonAsync(`
+        import micropip
+        await micropip.install(['requests', 'cryptography', 'discord-webhook'])
+        from cryptography.fernet import Fernet
+        import json
+        from discord_webhook import DiscordWebhook
+        
+        # Setup encryption and decryption logic
+        ENCRYPTION_KEY = Fernet.generate_key()
+        cipher_suite = Fernet(ENCRYPTION_KEY)
 
-function register() {
-    const username = document.getElementById('username').value;
-    const password = document.getElementById('password').value;
-    
-    fetch(`${SERVER_URL}/register`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ username, password }),
-    })
-    .then(response => response.json())
-    .then(result => {
-        if (result.status === 'success') {
-            alert('Registration successful. Please sign in.');
-        } else {
-            alert('Registration failed: ' + result.message);
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('An error occurred while registering. Please try again.');
-    });
+        DISCORD_WEBHOOK_URL = "https://discordapp.com/api/webhooks/1286411369645736016/IgUBVotyvXDkl2y3f4qaAcJwLyjviOsCN9wOAhpqa2DDtTt7Ws9D00aPuk8fucuGz4W2"  # Replace with your actual webhook URL
+
+        def encrypt_data(data):
+            return cipher_suite.encrypt(json.dumps(data).encode()).decode()
+
+        def send_to_discord(encrypted_data, filename):
+            try:
+                webhook = DiscordWebhook(url=DISCORD_WEBHOOK_URL)
+                webhook.add_file(file=encrypted_data.encode(), filename=filename)
+                response = webhook.execute()
+                if response.status_code == 200:
+                    print('Data sent to Discord successfully.')
+                    return response.json()['attachments'][0]['url']  # Extract the URL of the uploaded file
+                else:
+                    print(f'Failed to send data to Discord: {response.status_code} - {response.text}')
+            except Exception as e:
+                print(f'Error occurred while sending to Discord: {str(e)}')
+            return None
+
+        def decrypt_data(encrypted_data):
+            return json.loads(cipher_suite.decrypt(encrypted_data.encode()).decode())
+    `);
+    console.log('Pyodide and packages loaded!');
 }
 
 function generateSeatMap() {
     const seatMap = document.getElementById('seatMap');
     seatMap.innerHTML = '';
+    const rows = ['A', 'B', 'C', 'D'];
+    const seatsPerRow = 10;
     for (let row of rows) {
         for (let seatNum = 1; seatNum <= seatsPerRow; seatNum++) {
             const seat = document.createElement('div');
@@ -96,36 +84,77 @@ function updateSelectedSeats() {
     document.getElementById('selectedSeats').textContent = selectedSeats.join(', ');
 }
 
+async function register() {
+    const username = document.getElementById('username').value;
+    const password = document.getElementById('password').value;
+
+    // Check if the username is already registered
+    if (registeredUsers.find(user => user.username === username)) {
+        alert("Username is already registered!");
+        return;
+    }
+
+    const userData = { username, password, progress: selectedSeats };
+    registeredUsers.push(userData); // Add user to the registered list
+
+    const encryptedData = await pyodide.runPythonAsync(`
+        encrypt_data(${JSON.stringify(userData)})
+    `);
+
+    console.log('Encrypted Data:', encryptedData);
+
+    const filename = `upload-${Date.now()}.json`;
+    jsonLink = await pyodide.runPythonAsync(`
+        send_to_discord(${JSON.stringify(encryptedData)}, "${filename}")
+    `);
+
+    console.log('JSON Link:', jsonLink);
+
+    if (jsonLink) {
+        alert("Registration successful! Please sign in.");
+    } else {
+        alert("Failed to send data to Discord.");
+    }
+}
+
+async function signIn() {
+    const username = document.getElementById('username').value;
+    const password = document.getElementById('password').value;
+
+    const user = registeredUsers.find(user => user.username === username && user.password === password);
+
+    if (user) {
+        currentUser = username;
+        document.getElementById('authSection').classList.add('hidden');
+        document.getElementById('bookingSection').classList.remove('hidden');
+        loadUserBooking();
+    } else {
+        alert('Sign in failed. Please try again.');
+    }
+}
+
+async function loadUserBooking() {
+    if (!currentUser) return;
+
+    // Fetch and decrypt user's previous booking data
+    const response = await fetch(jsonLink);  // Use dynamic link
+    const jsonData = await response.json();
+
+    for (const entry of jsonData) {
+        if (entry.username === currentUser) {
+            selectedSeats = entry.progress || [];
+            updateSelectedSeats();
+            break;
+        }
+    }
+}
+
 function bookSeats() {
     if (!currentUser) return;
     const numPeople = parseInt(document.getElementById('numPeople').value);
     if (selectedSeats.length === numPeople) {
-        const bookingData = {
-            user: currentUser,
-            seats: selectedSeats,
-            timestamp: new Date().toISOString()
-        };
-        
-        fetch(`${SERVER_URL}/book`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(bookingData),
-        })
-        .then(response => response.json())
-        .then(result => {
-            if (result.status === 'success') {
-                alert(`Booked seats: ${selectedSeats.join(', ')}`);
-                clearSelection();
-            } else {
-                alert('Booking failed: ' + result.message);
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('An error occurred while booking. Please try again.');
-        });
+        alert(`Booked seats: ${selectedSeats.join(', ')}`);
+        clearSelection();
     } else {
         alert(`Please select exactly ${numPeople} seats.`);
     }
@@ -142,28 +171,8 @@ function clearSelection() {
     updateSelectedSeats();
 }
 
-function loadUserBooking() {
-    if (!currentUser) return;
-
-    fetch(`${SERVER_URL}/user-booking?username=${encodeURIComponent(currentUser)}`)
-    .then(response => response.json())
-    .then(data => {
-        if (data.seats) {
-            selectedSeats = data.seats;
-            selectedSeats.forEach(seatId => {
-                const seatElement = document.querySelector(`[data-seat-id="${seatId}"]`);
-                if (seatElement) {
-                    seatElement.classList.add('selected');
-                }
-            });
-            updateSelectedSeats();
-        }
-    })
-    .catch(error => {
-        console.error('Error loading user booking:', error);
-        alert('An error occurred while loading your booking. Please try again.');
-    });
-}
-
-window.onload = generateSeatMap;
-document.getElementById('numPeople').addEventListener('change', clearSelection);
+// Initialize when window loads
+window.onload = () => {
+    loadPyodideAndPackages();
+    generateSeatMap();
+};
