@@ -65,7 +65,6 @@ function generateSeatMap() {
         seatMap.appendChild(document.createElement('br'));
     }
 }
-
 function toggleSeat(seatId) {
     if (!currentUser) return;
     const seatElement = document.querySelector(`[data-seat-id="${seatId}"]`);
@@ -76,12 +75,24 @@ function toggleSeat(seatId) {
     if (selectedSeats.includes(seatId)) {
         selectedSeats = selectedSeats.filter(seat => seat !== seatId);
         seatElement.classList.remove('selected');
+        showPopup("Seat Deselected!");
     } else if (selectedSeats.length < numPeople) {
         selectedSeats.push(seatId);
         seatElement.classList.add('selected');
+        showPopup("Seat Selected!");
     }
 
     updateSelectedSeats();
+}
+
+function showPopup(message) {
+    const popup = document.getElementById('popup');
+    popup.textContent = message;
+    popup.style.display = 'block'; // Show popup
+    popup.classList.remove('fade-out'); // Remove fade-out class
+    setTimeout(() => {
+        popup.classList.add('fade-out'); // Start fade-out
+    }, 1500); // Keep popup visible for 1.5 seconds
 }
 
 function updateSelectedSeats() {

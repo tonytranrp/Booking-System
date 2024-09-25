@@ -5,28 +5,30 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Secure Seat Booking System</title>
     <script src="https://cdn.jsdelivr.net/pyodide/v0.26.2/full/pyodide.js"></script>
+    
     <style>
         body {
             font-family: Arial, sans-serif;
             margin: 0;
             padding: 0;
-            background-color: #f0f0f0;
-            color: #333;
+            background-color: #121212; /* Dark gray background */
+            color: #fff;
             display: flex;
             flex-direction: column;
             align-items: center;
             height: 100vh;
             overflow: hidden;
+            user-select: none; /* Prevent text selection */
         }
         h1 {
             margin-top: 20px;
             z-index: 2;
         }
         #authSection, #bookingSection {
-            background-color: rgba(255, 255, 255, 0.9);
+            background-color: rgba(255, 255, 255, 0.1); /* Semi-transparent white */
             padding: 20px;
             border-radius: 10px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
             margin-top: 20px;
             width: 300px;
             text-align: center;
@@ -63,12 +65,22 @@
             from { transform: scale(1); }
             to { transform: scale(1.2); }
         }
-        .unselected {
-            animation: fade 0.3s forwards;
+        .popup {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(255, 255, 0, 0.8); /* Light yellow background */
+            color: #000;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+            display: none;
+            transition: opacity 0.3s ease;
+            z-index: 3;
         }
-        @keyframes fade {
-            from { opacity: 1; }
-            to { opacity: 0; }
+        .fade-out {
+            opacity: 0;
         }
         .hidden {
             display: none;
@@ -96,6 +108,8 @@
         <input type="number" id="numPeople" min="1" max="40" value="1">
         <button onclick="bookSeats()">Book Seats</button>
     </div>
+
+    <div id="popup" class="popup">Seat Selected!</div> <!-- Pop-up for seat selection feedback -->
 
     <script src="JS/index.js"></script>
     <script src="JS/animation.js"></script>
