@@ -1,8 +1,7 @@
-let selectedSeats = [];
+let selectedSystem = ''; // Current booking system (movie or airplane)
 let currentUser = null;
 let pyodide;
-let jsonLink = ""; // Variable to hold the latest JSON link
-let registeredUsers = []; // Array to hold registered users
+let registeredUsers = [];
 
 async function loadPyodideAndPackages() {
     pyodide = await loadPyodide();
@@ -12,109 +11,48 @@ async function loadPyodideAndPackages() {
         await micropip.install(['requests', 'cryptography', 'discord-webhook'])
     `);
     console.log('Pyodide and packages loaded!');
-
-    // Load the Python code directly into Pyodide
-    await pyodide.runPythonAsync(`
-from cryptography.fernet import Fernet
-import json
-from discord_webhook import DiscordWebhook
-
-# Setup encryption and decryption logic
-ENCRYPTION_KEY = Fernet.generate_key()
-cipher_suite = Fernet(ENCRYPTION_KEY)
-
-DISCORD_WEBHOOK_URL = "https://discordapp.com/api/webhooks/1286411369645736016/IgUBVotyvXDkl2y3f4qaAcJwLyjviOsCN9wOAhpqa2DDtTt7Ws9D00aPuk8fucuGz4W2"
-
-def encrypt_data(data):
-    return cipher_suite.encrypt(json.dumps(data).encode()).decode()
-
-def send_to_discord(encrypted_data, filename):
-    try:
-        webhook = DiscordWebhook(url=DISCORD_WEBHOOK_URL)
-        webhook.add_file(file=encrypted_data.encode(), filename=filename)
-        response = webhook.execute()
-        if response.status_code == 200:
-            print('Data sent to Discord successfully.')
-            return response.json()['attachments'][0]['url']
-        else:
-            print(f'Failed to send data to Discord: {response.status_code} - {response.text}')
-    except Exception as e:
-        print(f'Error occurred while sending to Discord: {str(e)}')
-    return None
-
-def decrypt_data(encrypted_data):
-    return json.loads(cipher_suite.decrypt(encrypted_data.encode()).decode())
-    `);
 }
 
-function generateSeatMap() {
-    const seatMap = document.getElementById('seatMap');
-    seatMap.innerHTML = '';
-    const rows = ['A', 'B', 'C', 'D'];
-    const seatsPerRow = 10;
-    for (let row of rows) {
-        for (let seatNum = 1; seatNum <= seatsPerRow; seatNum++) {
-            const seat = document.createElement('div');
-            seat.className = 'seat';
-            const seatId = `${row}${seatNum}`;
-            seat.textContent = seatId;
-            seat.setAttribute('data-seat-id', seatId);
-            seat.onclick = () => toggleSeat(seatId);
-            seatMap.appendChild(seat);
-        }
-        seatMap.appendChild(document.createElement('br'));
-    }
-}
-function toggleSeat(seatId) {
-    if (!currentUser) return;
-    const seatElement = document.querySelector(`[data-seat-id="${seatId}"]`);
-    if (!seatElement) return;
+// Function to switch between booking systems
+function selectBookingSystem(system) {
+    selectedSystem = system;
+    document.getElementById('menuSection').classList.add('hidden');
+    document.getElementById('authSection').classList.remove('hidden');
+    document.getElementById('bookingTitle').textContent = system === 'movie' ? 'Movie Seat Booking' : 'Airplane Seat Booking';
 
-    const numPeople = parseInt(document.getElementById('numPeople').value);
-
-    if (selectedSeats.includes(seatId)) {
-        selectedSeats = selectedSeats.filter(seat => seat !== seatId);
-        seatElement.classList.remove('selected');
-        showPopup("Seat Deselected!");
-    } else if (selectedSeats.length < numPeople) {
-        selectedSeats.push(seatId);
-        seatElement.classList.add('selected');
-        showPopup("Seat Selected!");
+    // Remove the existing script tag if present
+    const existingScript = document.getElementById('bookingScript');
+    if (existingScript) {
+        document.body.removeChild(existingScript);
     }
 
-    updateSelectedSeats();
+    // Dynamically load the appropriate script for the selected system
+    const script = document.createElement('script');
+    script.src = `JS/${system}SeatBooking.js`;
+    script.id = 'bookingScript';
+    script.onload = () => {
+        // Call generateSeatMap once the script has loaded
+        generateSeatMap();
+    };
+    document.body.appendChild(script);
 }
 
-function showPopup(message) {
-    const popup = document.getElementById('popup');
-    popup.textContent = message;
-    popup.style.display = 'block'; // Show popup
-    popup.classList.remove('fade-out'); // Remove fade-out class
-    setTimeout(() => {
-        popup.classList.add('fade-out'); // Start fade-out
-    }, 1500); // Keep popup visible for 1.5 seconds
-}
-
-function updateSelectedSeats() {
-    document.getElementById('selectedSeats').textContent = selectedSeats.join(', ');
-}
-
+// Authentication functions (same for both systems)
 async function register() {
     const username = document.getElementById('username').value;
     const password = document.getElementById('password').value;
 
-    // Check if the username is already registered
     if (registeredUsers.find(user => user.username === username)) {
         alert("Username is already registered!");
         return;
     }
 
-    const userData = { username, password, progress: selectedSeats };
-    registeredUsers.push(userData); // Add user to the registered list
+    const userData = { username, password };
+    registeredUsers.push(userData);
 
     const encryptedData = await pyodide.runPythonAsync(`encrypt_data(${JSON.stringify(userData)})`);
     const filename = `upload-${Date.now()}.json`;
-    jsonLink = await pyodide.runPythonAsync(`send_to_discord(${JSON.stringify(encryptedData)}, "${filename}")`);
+    const jsonLink = await pyodide.runPythonAsync(`send_to_discord(${JSON.stringify(encryptedData)}, "${filename}")`);
 
     if (jsonLink) {
         alert("Registration successful! Please sign in.");
@@ -128,56 +66,11 @@ async function signIn() {
     const password = document.getElementById('password').value;
 
     const user = registeredUsers.find(user => user.username === username && user.password === password);
-
     if (user) {
         currentUser = username;
         document.getElementById('authSection').classList.add('hidden');
         document.getElementById('bookingSection').classList.remove('hidden');
-        loadUserBooking();
     } else {
         alert('Sign in failed. Please try again.');
     }
 }
-
-async function loadUserBooking() {
-    if (!currentUser) return;
-
-    const response = await fetch(jsonLink);
-    const jsonData = await response.json();
-
-    for (const entry of jsonData) {
-        if (entry.username === currentUser) {
-            selectedSeats = entry.progress || [];
-            updateSelectedSeats();
-            break;
-        }
-    }
-}
-
-function bookSeats() {
-    if (!currentUser) return;
-    const numPeople = parseInt(document.getElementById('numPeople').value);
-    if (selectedSeats.length === numPeople) {
-        alert(`Booked seats: ${selectedSeats.join(', ')}`);
-        clearSelection();
-    } else {
-        alert(`Please select exactly ${numPeople} seats.`);
-    }
-}
-
-function clearSelection() {
-    selectedSeats.forEach(seatId => {
-        const seatElement = document.querySelector(`[data-seat-id="${seatId}"]`);
-        if (seatElement) {
-            seatElement.classList.remove('selected');
-        }
-    });
-    selectedSeats = [];
-    updateSelectedSeats();
-}
-
-// Initialize when window loads
-window.onload = () => {
-    loadPyodideAndPackages();
-    generateSeatMap();
-};
