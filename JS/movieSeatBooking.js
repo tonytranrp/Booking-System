@@ -86,6 +86,6 @@ function showNotification(message) {
                 notification.classList.add('hidden');
                 notificationInProgress = false; // Allow new notifications
             }, 500); // Wait for fade-out to finish
-        }, 1500); // Show the notification for 1.5 seconds
+        }, 750); // Show the notification for 1.5 seconds
     }
 }
