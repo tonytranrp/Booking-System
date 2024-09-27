@@ -35,11 +35,23 @@ function toggleSeat(seatId) {
         selectedSeats = selectedSeats.filter(seat => seat !== seatId);
         seatElement.classList.remove('selected');
         message = `Deselected seat: ${seatId}`;
+        anime({
+            targets: seatElement,
+            backgroundColor: '#ccc',
+            scale: 1,
+            duration: 500
+        });
     } else if (selectedSeats.length < numPeople) {
         // Only add a seat if the number of selected seats is less than numPeople
         selectedSeats.push(seatId);
         seatElement.classList.add('selected');
         message = `Selected seat: ${seatId}`;
+        anime({
+            targets: seatElement,
+            backgroundColor: '#4CAF50',
+            scale: 1.1,
+            duration: 500
+        });
     } else {
         // If trying to select more than the allowed number of seats
         message = `You can only select ${numPeople} seats.`;
@@ -86,6 +98,6 @@ function showNotification(message) {
                 notification.classList.add('hidden');
                 notificationInProgress = false; // Allow new notifications
             }, 500); // Wait for fade-out to finish
-        }, 750); // Show the notification for 1.5 seconds
+        }, 1500); // Show the notification for 1.5 seconds
     }
 }
