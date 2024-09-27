@@ -86,6 +86,24 @@ function toggleSeat(seatId) {
     showNotification(message);
 }
 
+function bookSeats() {
+    if (selectedSeats.length > 0) {
+        alert(`Booking the following seats: ${selectedSeats.join(', ')}`);
+        
+        // Store selected seats in local storage
+        localStorage.setItem('selectedSeats', selectedSeats.join(', '));
+        
+        // Reset after booking
+        selectedSeats = []; 
+        document.getElementById('selectedSeats').textContent = '';
+        generateSeatMap(); // Regenerate seat map
+
+        // Redirect to ticket page
+        window.location.href = "./JS/Ticket.html"; // Make sure this path is correct
+    } else {
+        alert('Please select at least one seat.');
+    }
+}
 function showNotification(message) {
     const notification = document.getElementById('seatNotification');
     const loadingBar = document.getElementById('loadingBar');
