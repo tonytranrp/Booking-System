@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ticket Confirmation</title>
+    <link href="../CSS/Style.css" rel="stylesheet" />
+</head>
+<body>
+    <div id="ticketSection">
+        <h1>Your Tickets</h1>
+        <h2>Selected Seats: <span id="ticketSeats"></span></h2>
+        <div id="ticketFormsContainer"></div>
+        <button type="button" onclick="printTickets()">Print Tickets</button>
+    </div>
+
+    <script>
+        // Retrieve selected seats from local storage
+        const selectedSeats = (localStorage.getItem('selectedSeats') || '').split(',').filter(seat => seat.trim() !== '');
+        document.getElementById('ticketSeats').textContent = selectedSeats.join(', ');
+
+        // Create forms for each selected seat
+        selectedSeats.forEach((seat, index) => {
+            const formHtml = `
+                <form class="ticketForm" id="ticketForm${index}">
+                    <h3>Ticket for Seat: ${seat}</h3>
+                    <label for="fullName${index}">Full Name:</label>
+                    <input type="text" id="fullName${index}" required>
+
+                    <label for="dob${index}">Date of Birth:</label>
+                    <input type="date" id="dob${index}" required>
+
+                    <label for="email${index}">Email:</label>
+                    <input type="email" id="email${index}" required>
+
+                    <label for="phone${index}">Phone Number:</label>
+                    <input type="tel" id="phone${index}" required>
+                </form>
+                <hr>
+            `;
+            document.getElementById('ticketFormsContainer').insertAdjacentHTML('beforeend', formHtml);
+        });
+
+        function printTickets() {
+            let allTickets = '';
+            selectedSeats.forEach((seat, index) => {
+                const fullName = document.getElementById(`fullName${index}`).value;
+                const dob = document.getElementById(`dob${index}`).value;
+                const email = document.getElementById(`email${index}`).value;
+                const phone = document.getElementById(`phone${index}`).value;
+
+                allTickets += `
+                    Ticket Confirmation for Seat: ${seat}
+                    -------------------------------
+                    Full Name: ${fullName}
+                    Date of Birth: ${dob}
+                    Email: ${email}
+                    Phone Number: ${phone}
+                    ---------------------------------
+                \n`;
+            });
+
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write('<pre>' + allTickets + '</pre>');
+            printWindow.document.close();
+            printWindow.print();
+        }
+    </script>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #121212;
+            color: #fff;
+        }
+
+        #ticketSection {
+            background-color: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+            width: 400px;
+            margin: auto;
+            text-align: left;
+        }
+
+        h1 {
+            text-align: center;
+        }
+
+        .ticketForm {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-top: 10px;
+        }
+
+        input {
+            width: 100%;
+            padding: 10px;
+            margin-top: 5px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
+
+        button {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #4CAF50;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+    </style>
+</body>
+</html>
